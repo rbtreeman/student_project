@@ -1,7 +1,7 @@
 FROM rocker/binder:3.6.0
 LABEL maintainer='Unknown'
 USER root
-RUN apt-get install libmpfr-dev
+RUN apt-get update && apt-get install libmpfr-dev
 COPY . ${HOME}
 RUN chown -R ${NB_USER} ${HOME}
 USER ${NB_USER}
