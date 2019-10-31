@@ -1,0 +1,215 @@
+---
+title: "FB/Analytica MCap Data"
+output: html_notebook
+---
+
+Market Cap Stuff: 
+
+```{r}
+rm(list=ls())
+
+library(pdfetch)
+library(plyr)
+
+Companies <- ldply(c("Facebook", "Google", "Microsoft", "Snapchat", "Twitter"))
+
+Shares_Outstanding <- ldply(c(2398606201, 298656198, 7683197503, 863056520, 742793573))
+
+Facebook <- pdfetch_YAHOO("FB", fields = c("close"), from= as.Date("2018-04-23"), to = as.Date("2018-04-24"))
+Facebook <- 165.84
+
+Google <- pdfetch_YAHOO("GOOGL", fields = c("close"), from= as.Date("2018-04-18"), to = as.Date("2018-04-19"))
+Google <- 383.3383
+
+LinkedIn <- pdfetch_YAHOO("MSFT", fields = c("close"), from= as.Date("2018-04-20"), to = as.Date("2018-04-21"))
+LinkedIn <- 95
+
+Snapchat <- pdfetch_YAHOO("SNAP", fields = c("close"), from= as.Date("2017-10-31"), to = as.Date("2017-11-01"))
+Snapchat <- 15.34
+  
+Twitter <- pdfetch_YAHOO("TWTR", fields = c("close"), from= as.Date("2017-10-26"), to = as.Date("2017-10-27"))
+Twitter <- 20.31
+
+Prices <- c(Facebook, Google, LinkedIn, Snapchat, Twitter)
+Prices <- ldply(Prices)
+
+MCapData <- cbind(Companies, Prices, Shares_Outstanding)
+names(MCapData) <- c("Companies", "Prices", "Shares Outstanding")
+
+MarketCap <- ldply(MCapData$Prices * MCapData$`Shares Outstanding`)
+MCapData <- cbind(MCapData, MarketCap)
+names(MCapData) <- c("Companies", "Prices", "Shares Outstanding", "Market Cap")
+
+rm(Companies, MarketCap, Prices, Shares_Outstanding)
+```
+
+Returns and Abnormal Returns 
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+rm(list = ls())
+
+library(pdfetch)
+library(tidyverse)
+library(xts)
+library(reshape2)
+library(plyr)
+library(readr)
+library(kableExtra)
+library(knitr)
+
+Est.Data.Start <- "2017-05-01"
+Est.Data.End <- "2018-03-01"
+
+Event.Data.Start <- "2018-03-15"
+Event.Data.End <- "2018-03-23"
+
+Est.Data <- pdfetch_YAHOO(c("^GSPC", "FB", "TWTR", "GOOGL", "SNAP", "MSFT"), fields = c("close"), from= as.Date(Est.Data.Start), to = as.Date(Est.Data.End), interval = "1d")
+
+names(Est.Data) <- c("SP500","Facebook", "Twitter", "Google", "Snapchat", "LinkedIn")
+
+Est.Data <- as.data.frame(Est.Data)
+Est.Data <- mutate(Est.Data, lnSP500 = log(SP500))
+Est.Data <- mutate(Est.Data, lnFacebook = log(Facebook))
+Est.Data <- mutate(Est.Data, lnTwitter = log(Twitter))
+Est.Data <- mutate(Est.Data, lnGoogle = log(Google))
+Est.Data <- mutate(Est.Data, lnSnapchat = log(Snapchat))
+Est.Data <- mutate(Est.Data, lnLinkedIn = log(LinkedIn))
+
+Est.Data <- Est.Data %>% 
+  mutate(lnSP500.Diff = lnSP500 - lag(lnSP500)) %>%
+  mutate(lnFacebook.Diff = lnFacebook - lag(lnFacebook)) %>%
+  mutate(lnTwitter.Diff = lnTwitter - lag(lnTwitter)) %>%
+  mutate(lnGoogle.Diff = lnGoogle - lag(lnGoogle)) %>%
+  mutate(lnSnapchat.Diff = lnSnapchat - lag(lnSnapchat)) %>%
+  mutate(lnLinkedIn.Diff = lnLinkedIn - lag(lnLinkedIn)) 
+
+column_order <- c("SP500", "lnSP500", "lnSP500.Diff", "Facebook", "lnFacebook", "lnFacebook.Diff", "Twitter", "lnTwitter", "lnTwitter.Diff",  "Google", "lnGoogle", "lnGoogle.Diff", "Snapchat", "lnSnapchat", "lnSnapchat.Diff", "LinkedIn", "lnLinkedIn", "lnLinkedIn.Diff")
+
+Est.Data <- Est.Data[, column_order]
+#View(Est.Data)
+
+Returns <- cbind(Est.Data$lnFacebook.Diff, Est.Data$lnTwitter.Diff, Est.Data$lnLinkedIn.Diff, Est.Data$lnSnapchat.Diff, Est.Data$lnGoogle.Diff)
+Returns <- as.data.frame(Returns)
+names(Returns) < c("Facebook", "Twitter", "LinkedIn", "Snapchat", "Google")
+Returns <- Returns[2:210, ]
+
+Event.Data <- pdfetch_YAHOO(c("^GSPC", "FB", "TWTR", "GOOGL", "SNAP", "MSFT"), fields = c("close"), from= as.Date(Event.Data.Start), to = as.Date(Event.Data.End), interval = "1d")
+
+names(Event.Data) <- c("SP500","Facebook", "Twitter", "Google", "Snapchat", "LinkedIn")
+
+Event.Data <- as.data.frame(Event.Data)
+
+Event.Data <- Event.Data %>%
+  mutate(lnSP500 = log(SP500)) %>%
+  mutate(lnFacebook = log(Facebook)) %>%
+  mutate(lnTwitter = log(Twitter)) %>% 
+  mutate(lnGoogle = log(Google)) %>%
+  mutate(lnSnapchat = log(Snapchat)) %>%
+  mutate(lnLinkedIn = log(LinkedIn))
+
+Event.Data <- Event.Data %>% 
+  mutate(lnSP500.Diff = lnSP500 - lag(lnSP500)) %>%
+  mutate(lnFacebook.Diff = lnFacebook - lag(lnFacebook)) %>%
+  mutate(lnTwitter.Diff = lnTwitter - lag(lnTwitter)) %>%
+  mutate(lnGoogle.Diff = lnGoogle - lag(lnGoogle)) %>%
+  mutate(lnSnapchat.Diff = lnSnapchat - lag(lnSnapchat)) %>%
+  mutate(lnLinkedIn.Diff = lnLinkedIn - lag(lnLinkedIn))
+  
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+Event.Data <- as.data.frame(Event.Data)
+
+LNSP500.Event.Diff <- Event.Data$lnSP500.Diff
+
+Facebook.Est.Reg <- lm(lnFacebook.Diff ~ lnSP500.Diff, data = Est.Data)
+Facebook.Est.Reg.Intercept <- Facebook.Est.Reg$coefficients[1]
+Facebook.Est.Reg.Slope <- Facebook.Est.Reg$coefficients[2]
+Facebook.Norm.Ret <- Facebook.Est.Reg.Intercept + Facebook.Est.Reg.Slope*LNSP500.Event.Diff
+rm(Facebook.Est.Reg.Intercept, Facebook.Est.Reg.Slope)
+Facebook.Est.Summary <- summary(Facebook.Est.Reg)$coefficients
+names(Facebook.Est.Summary) <- c("Estimate", "Standard Error", "T Statistic", "P(>|t|)")
+kable(Facebook.Est.Summary, digits = 5, booktabs = T, caption = "Facebook Regression Summary")
+
+Twitter.Est.Reg <- lm(lnTwitter.Diff ~ lnSP500.Diff, data = Est.Data)
+Twitter.Est.Reg.Intercept <- Twitter.Est.Reg$coefficients[1]
+Twitter.Est.Reg.Slope <- Twitter.Est.Reg$coefficients[2]
+Twitter.Norm.Ret <- Twitter.Est.Reg.Intercept + Twitter.Est.Reg.Slope*LNSP500.Event.Diff
+rm(Twitter.Est.Reg.Intercept, Twitter.Est.Reg.Slope)
+Twitter.Est.Summary <- summary(Twitter.Est.Reg)$coefficients
+names(Twitter.Est.Summary) <- c("Estimate", "Standard Error", "T Statistic", "P(>|t|)")
+kable(Twitter.Est.Summary, digits = 5, booktabs = T, caption = "Twitter Regression Summary")
+
+Google.Est.Reg <- lm(lnGoogle.Diff ~ lnSP500.Diff, data = Est.Data)
+Google.Est.Reg.Intercept <- Google.Est.Reg$coefficients[1]
+Google.Est.Reg.Slope <- Google.Est.Reg$coefficients[2]
+Google.Norm.Ret <- Google.Est.Reg.Intercept + Google.Est.Reg.Slope*LNSP500.Event.Diff
+rm(Google.Est.Reg.Intercept, Google.Est.Reg.Slope)
+Google.Est.Summary <- summary(Google.Est.Reg)$coefficients
+names(Google.Est.Summary) <- c("Estimate", "Standard Error", "T Statistic", "P(>|t|)")
+kable(Google.Est.Summary, digits = 5, booktabs = T, caption = "Google Regression Summary")
+
+Snapchat.Est.Reg <- lm(lnSnapchat.Diff ~ lnSP500.Diff, data = Est.Data)
+Snapchat.Est.Reg.Intercept <- Snapchat.Est.Reg$coefficients[1]
+Snapchat.Est.Reg.Slope <- Snapchat.Est.Reg$coefficients[2]
+Snapchat.Norm.Ret <- Snapchat.Est.Reg.Intercept + Snapchat.Est.Reg.Slope*LNSP500.Event.Diff
+rm(Snapchat.Est.Reg.Intercept, Snapchat.Est.Reg.Slope)
+Snapchat.Est.Summary <- summary(Snapchat.Est.Reg)$coefficients
+names(Snapchat.Est.Summary) <- c("Estimate", "Standard Error", "T Statistic", "P(>|t|)")
+kable(Snapchat.Est.Summary, digits = 5, booktabs = T, caption = "Snapchat Regression Summary")
+
+LinkedIn.Est.Reg <- lm(lnLinkedIn.Diff ~ lnSP500.Diff, data = Est.Data)
+LinkedIn.Est.Reg.Intercept <- LinkedIn.Est.Reg$coefficients[1]
+LinkedIn.Est.Reg.Slope <- LinkedIn.Est.Reg$coefficients[2]
+LinkedIn.Norm.Ret <- LinkedIn.Est.Reg.Intercept + LinkedIn.Est.Reg.Slope*LNSP500.Event.Diff
+rm(LinkedIn.Est.Reg.Intercept, LinkedIn.Est.Reg.Slope)
+LinkedIn.Est.Summary <- summary(Facebook.Est.Reg)$coefficients
+names(LinkedIn.Est.Summary) <- c("Estimate", "Standard Error", "T Statistic", "P(>|t|)")
+kable(Facebook.Est.Summary, digits = 5, booktabs = T, caption = "LinkedIn Regression Summary")
+
+Facebook.Abret <- Event.Data$lnFacebook.Diff - Facebook.Norm.Ret
+
+Twitter.Abret <- Event.Data$lnTwitter.Diff - Twitter.Norm.Ret
+
+Google.Abret <- Event.Data$lnGoogle.Diff - Google.Norm.Ret
+
+Snapchat.Abret <- Event.Data$lnSnapchat.Diff - Snapchat.Norm.Ret 
+
+LinkedIn.Abret <- Event.Data$lnLinkedIn.Diff - LinkedIn.Norm.Ret
+
+Facebook.Abret.DF <- ldply(Facebook.Abret)
+Twitter.Abret.DF <- ldply(Twitter.Abret)
+Google.Abret.DF <- ldply(Google.Abret)
+Snapchat.Abret.DF <- ldply(Snapchat.Abret)
+LinkedIn.Abret.DF <- ldply(LinkedIn.Abret)
+
+Dates <- c("2018-03-15", "2018-03-16", "2018-03-19", "2018-03-20", "2018-03-21", "2018-03-22")
+Dates <- ldply(Dates)
+
+Weekday <- c("Thursday", "Friday","Monday", "Tuesday", "Wednesday", "Thursday")
+Weekday <- ldply(Weekday)
+
+Day <- c("NA", "Leak -1", "Leak +1", "Leak +2", "Leak +3", "Leak +4")
+Day <- ldply(Day)
+
+Abret.Combined <- cbind(Dates, Weekday, Day, Facebook.Abret.DF, Twitter.Abret.DF, Google.Abret.DF, Snapchat.Abret.DF, LinkedIn.Abret.DF)
+
+names(Abret.Combined) <- c("Date", "Weekday", "Day", "Facebook", "Twitter", "Google", "Snapchat", "LinkedIn")
+
+kable(Abret.Combined, digits = 6, booktabs = T, caption = "Abnormal Returns of Social Media Sites")
+
+Abret.Combined <- Abret.Combined[2:6]
+```
+
+```{r}
+library(rmgarch)
+library(astsa)
+
+##  Specifying AR model for Facebook
+#par(mfrow = c(2, 1))
+acf2(abs(Returns$Facebook), max.lag = 8)
+pacf(abs(Returns$Facebook), lag.max = 7)
+
+acf2(abs(Abret.Combined$Facebook), max.lag = 8)
+pacf(abs(Abret.Combined$Facebook), lag.max = 7)
+```

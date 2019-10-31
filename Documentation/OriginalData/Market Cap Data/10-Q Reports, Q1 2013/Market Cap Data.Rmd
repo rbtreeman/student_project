@@ -1,0 +1,60 @@
+---
+title: "Market Cap Data"
+output: html_notebook
+---
+
+The numerical figures listed are directly from the 10-Q filings with the SEC. The documents that were filed and used for this are those filed before the start of the event window. We use the common shares outstanding as a representation of shares outstanding.
+
+Data for Snowden Event Study:
+
+```{r}
+library(pdfetch)
+library(plyr)
+
+Companies <- ldply(c("Comcast", "Charter", "AT&T", "Verizon", "Century", "Google", "Microsoft", "Apple", "Facebook", "Yahoo", "AOL"))
+
+Shares_Outstanding <- ldply(c(0, 101250955, 5380000000, 2861117414, 609046043, 0, 8351106590, 939058000, 0, 1082634754, 77451455))
+
+Comcast <- pdfetch_YAHOO("CMCSA", fields = c("close"), from= as.Date("2013-03-28"), to = as.Date("2013-03-29"))
+Comcast <- 20.99 
+
+Charter <- pdfetch_YAHOO("CHTR", fields = c("close"), from= as.Date("2013-03-28"), to = as.Date("2013-03-29"))
+Charter <- 104.18
+
+ATT <- pdfetch_YAHOO("T", fields = c("close"), from= as.Date("2013-04-26"), to = as.Date("2013-04-28"))
+ATT <- 37.04
+  
+Verizon <- pdfetch_YAHOO("VZ", fields = c("close"), from= as.Date("2013-03-28"), to = as.Date("2013-03-29"))
+Verizon <- 49.15
+
+Century <- pdfetch_YAHOO("CTL", fields = c("close"), from= as.Date("2013-05-02"), to = as.Date("2013-05-03"))
+Century <- 37.04
+
+Google <- pdfetch_YAHOO("GOOGL", fields = c("close"), from= as.Date("2013-04-18"), to = as.Date("2013-04-19"))
+Google <- 383.3383
+
+Microsoft <- pdfetch_YAHOO("MSFT", fields = c("close"), from= as.Date("2013-04-11"), to = as.Date("2013-04-12"))
+Microsoft <- 28.94
+
+Apple <- pdfetch_YAHOO("AAPL", fields = c("close"), from= as.Date("2013-04-12"), to = as.Date("2013-04-13"))
+Apple <- 61.4
+
+Facebook <- pdfetch_YAHOO("FB", fields = c("close"), from= as.Date("2013-04-30"), to = as.Date("2013-05-01"))
+Facebook <- 27.77
+
+Yahoo <- 26.52
+
+AOL <- 40.34
+
+Prices <- c(Comcast, Charter, ATT, Verizon, Century, Google, Microsoft, Apple, Facebook, Yahoo, AOL)
+Prices <- ldply(Prices)
+
+MCapData <- cbind(Companies, Prices, Shares_Outstanding)
+names(MCapData) <- c("Companies", "Prices", "Shares Outstanding")
+
+MarketCap <- ldply(MCapData$Prices * MCapData$`Shares Outstanding`)
+MCapData <- cbind(MCapData, MarketCap)
+names(MCapData) <- c("Companies", "Prices", "Shares Outstanding", "Market Cap")
+
+rm(Companies, MarketCap, Prices, Shares_Outstanding)
+```

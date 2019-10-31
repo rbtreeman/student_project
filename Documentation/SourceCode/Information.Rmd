@@ -1,0 +1,664 @@
+---
+title: "The Transmission of Information in the Information Age"
+author: | 
+  | Jenna Christensen and Michael O'Hara, PhD
+  | Department of Economics
+  | St. Lawrence University
+  | 23 Romoda Drive 
+  | Canton, New York 13617
+output:
+  pdf_document: default
+  word_document: default
+bibliography: InformationSources.bib
+keywords: Information, Technology, Privacy Disclosure
+abstract: |-
+ We use Edward Snowden's disclosures concerning the National Security Agency's extraction of private data from internet servers to examine the dissemination and spillover effects of new information within the technology sector. Event study methodologies that focus on varying periods throughout the affair suggest abnormal negative returns during the initial period of uncertainty and a significant recovery after criminal charges were filed against Snowden. This effect is observed for both the internet sites specifically named in the leaked government documents and internet service providers that may be associated with these companies by investors. We examine this spillover by employing a Dynamic Conditional Correlation (DCC) GARCH approach that allows the correlation in volatility to change over time. We find evidence of a steady rise in the correlation between the named sites and internet providers as the events involving Snowden affair emerged. This demonstrates that the effects of news concerning specific companies in the technology sector are not limited to the companies directly involved.       \par
+  \textbf{JEL codes:} B26 (Financial Economics), G14 (Information and Market Efficiency, Event Studies, and Insider Trading), L63 (Microelectronics, Computers, and Communications Equipment)  \par
+  \textbf{Keywords:} Information; Technology; Privacy Disclosure
+  
+fontsize: 11pt
+---
+
+
+```{r, message=FALSE, include=FALSE}
+####   Clear memory and load needed packages
+rm(list = ls())
+
+library(pdfetch)
+library(tidyverse)
+library(xts)
+library(reshape2)
+library(knitr)
+library(readr)
+library(kableExtra)
+library(stargazer)
+library(rmgarch)
+
+```
+
+
+```{r, message=FALSE, warning=FALSE, include=FALSE}
+##  Read in data from file
+##  Data is created in Supplementary_code/Fetch_data
+##  To import raw data directly (soup-to-nuts), set
+Data.Start <- as.Date("2012-05-18")
+Data.End <- as.Date("2013-06-28")
+
+## Then run line below
+## source("../Supplementary_Code/Fetch_data.R")
+
+##  Otherwise, data is downloaded from the ImportableData folder
+full.price.data <- read.csv("../ImportableData/ImportData.csv", row.names = 1)
+
+Leak.Date <- as.Date("2013-06-05")
+Protest.Date <- as.Date("2013-06-15")
+Complaint.Date <- as.Date("2013-06-22")
+
+event.period <- paste(Leak.Date, "/", Complaint.Date + 4, sep = "")
+
+## Set index to be used in market model
+## as a string, eh?
+
+market.index <- "SP500"
+
+
+sites <- c("Google", "Microsoft", "Apple", "Facebook", "AOL", "Yahoo")
+providers <- c("Comcast", "Charter", "ATT", "Verizon", "Century")
+
+
+```
+
+$\pagebreak$
+
+#Introduction 
+
+Due to the materialization of the Information Age and the precipitous development in communication technologies, a large literature has been dedicated to the ethical and financial effects of publicly disclosing security breaches and news incidents concerning technology companies. Examining the spread of information within the technology sector is of particular interest due to the volatile nature of stocks within the technology sector and the high frequency of data scandals. News announcements not only disperse new information but also enhance the transparency of publicly traded firms and their actions. Thus far, most literature that studies companies’ data breaches and loss of private information fails to analyze the influence of whistleblowing in the technology industry. We use Edward Snowden's disclosures of the National Security Agency's extraction of private data from internet servers to examine the dissemination and spillover effects of new information within the technology sector. We apply an event study methodology to assess how the disclosure of government surveillance affects the returns of internet sites and internet providers. Thereafter, we investigate the presence of volatility spillover effects between internet sites and internet providers with generalized autoregressive conditional heteroskedastic (GARCH) models. 
+
+We focus our event study on three periods during the event: a period of shock after the initial revelation of the leak, a period of ambiguity surrounding protests in Hong Kong when Snowden was alternately viewed as a hero or a traitor, and a period after the filing of criminal charges against Snowden. Our analysis suggests abnormal negative returns during the period of ambiguity and protest, and a significant recovery after criminal charges were filed against Snowden. This effect is observed to spill over from the internet sites specifically named in the leaked government documents to internet service providers that may be associated with these companies in the minds of investors. 
+
+The application of event studies is limited because they implicitly assume that the volatility of stocks are constant throughout time. This assumption prohibits the examination of changes in volatility as well as volatility spillover effects. The application of generalized autoregressive conditional heteroskedasticity models allows us to model changes in the variances of examined stocks [@Bollerslev1986]. We examine the spillover from the sites named in the documents to internet service providers by employing a Dynamic Conditional Correlation (DCC) GARCH approach that allows the correlation in volatility to change over time. We find evidence of a steady rise in the correlation between the named sites and internet providers as the events involving Snowden affair emerged, peaking during when the criminal charges against Snowden were filed. The presence of a volatility contagion suggests that new information not only affects companies involved in headlining news stories but also associated companies.
+
+
+
+#Literature Review 
+
+The Efficient Market Hypothesis argues that, at any time, securities markets fully reflect extant and emergent information. Fama assumes that conditions of market equilibrium can be stated in terms of expected returns, and he finds no evidence that deviations from the efficient markets permeate throughout the investment community [@Fama1970]. Subsequent to the addition of the Efficient Market Hypothesis to economic literature, scholars began assessing the economic effects of product recalls, mergers, celebrity endorsements, and stock splits by calculating the abnormal returns attributable to the events being studied. 
+
+A large number of economists have examined the influence of news, or the dissemination of new information, on public sentiment and stock returns with event studies. @Pearce1984 are the first to examine the response of stock prices to economic news announcements in order to test the efficiency of markets. They gather records of daily changes in stock indexes and closing stock prices along with announcements from the Federal Reserve and the Bureau of Labor Statistics to test their hypothesis. Their empirical evidence demonstrates that announcements regarding monetary policy significantly impact returns. However, they find limited evidence to support the claim that news concerning inflation rates and real economic activity has lasting significant results. 
+
+While early research examines the uncertainty surrounding economic news may affect the returns of companies, the examination of firm-specific news has recently become a widely studied subject. @Chan2003 and @Salin2001 find that economic news announcements, as well as firm-related news announcements, significantly affect the stock prices. The main findings of @Chan2003 exhibit a strong drift after the declaration of bad news as well as a reversal after extreme price movements. @Salin2001 identify the effects of firm-specific news by examining the losses attributed to food recalls for Sara Lee Corp., IBP, Inc., and Odwalla, Inc., between 1996 and 1998. The recalls they study vary by product type, company size, and severity, so it is not surprising that they find varying effects in their event study. Nonetheless, in some documented cases the returns of shareholders significantly fell while the returns of others remained largely unaffected. @Kim2003 also finds strong evidence supporting the claim that markets respond differently to bad news announcements compared to overall news which indicates that the dispersion of new information is a source of tradeable information. 
+
+The large majority of event studies in the technology sector examine abnormal returns attributable to data breaches. Most studies find that technology companies suffer statistically significant losses when they announce their involvement in data scandals and data breaches. @Gordon2011 and @Yayla2011 create similar event study models to examine the pecuniary effects of announcing security breaches. @Gordon2011 perform a long horizon event study to compute the returns of companies subsequent to a data breach, and they conclude that breaches that influence clients' confidentiality, availability, or integrity have the greatest negative impacts on returns. @Yayla2011 also find that pure E-commerce firms suffered significantly greater losses in the event of security breaches than traditional "brick and mortar" firms. Furthermore, they conclude that the significant impact on firms whose data has been breached has decreased over time. This suggests that investors are no longer as sensitive to security events. The findings of @Gordon2011 and @Yayla2011 are consistent with event studies including those performed by @Acquisti2006, @Gatzlaff2010, @Campbell2003, and @Goel2009, all of which conclude that disclosures regarding data breaches also lead to statistically significant negative returns. 
+
+Notwithstanding the fact that a considerable amount of literature is dedicated to the effects of data breaches, the divulgence of classified government documents remains a scantly studied anomaly in economics. @Patsakis2018 are the first and only to apply Capital Asset Pricing Model (CAPM) and Fama-French three-factor model to examine the long term, monetary effects of data breaches after Snowden revealed the existence of government surveillance programs. They attempt to quantify the impact of the revelations on a group of arbitrary technology and communication companies and compare their results to the findings of studies that examine the impact of security and privacy incidents for publicly traded firms. @Patsakis2018 use a sample of companies in internet-related sectors and internet communications companies to investigate the overall influence of Snowden's case from June 6, 2013, to September 25, 2015, yet they pay very little attention to the companies listed in official government documents when Snowden revealed government surveillance operations. The list of arbitrary examined technology companies includes Activision Blizzard, AOL, Apple, AT&T, Blackberry, Cisco, Google, Facebook, Level3, Mastercard, Microsoft, Oracle, Seagate, Twitter, Verizon, Visa, Western Digital, and Yahoo. The authors hypothesize that the disclosing government surveillance programs causes significantly abnormal returns during the 28-month window following June of 2013, but they fail to provide a sufficient amount of evidence to support their hypothesis. Their empirical work contains little variation between the CAPM and Fama-French three-factor model. Nonetheless, neither method illustrates that Snowden’s actions had significant effects on the included firms’ stock prices during the 28-month event window. Although @Patsakis2018 fail to reject their null hypothesis, their results are largely expected. They test for abnormal returns during a lengthy event window after new information concerning government surveillance is announced. Under the working assumption that markets are efficient, it is only appropriate to examine statistically significant losses during the few days immediately following an event. Since markets are efficient and knowledge  quickly spreads, it is highly unlikely that there are additional financial consequences of Snowden's disclosure regarding surveillance in the United States during the 28-month event window. 
+
+Unlike @Patsakis2018, we examine the immediate effects Snowden's disclosures have on internet sites listed in the NSA's documents as well as internet providers to analyze how information influences trading behavior in the technology sector. We specifically analyze the returns of internet sites who were directly involved with the collection of data as well as the returns of internet providers whose roles were tangential to the operations performed by the NSA. 
+
+Event studies allow economists to identify significant losses accredited to specific events while contagion studies provide powerful information about how the stock volatilities of related firms are affected during event periods. @Kaufman1994 defines contagion as “a term used to describe the spillover of the effects of shocks from one or more firms to others.” While contagions are continuously studied in the banking industry and rethought to be more serious in finance than in others, they may appear elsewhere. However, the application of contagion studies is scantly used elsewhere in economic literature. According to Kaufman, bank contagion is hypothesized to  occur faster than contagions in other industries, spread more to a greater extent within the industry, result in widespread intra-industry failures, result in larger losses to creditors, and spread beyond the financial industry. Furthermore, it is expected that financial contagions cause substantial damage not only to the immediately affected banks but also to the entire financial system and macroeconomy. 
+
+@Engle1982 presents an Autoregressive Conditional Heteroskedasticity (ARCH) model that permits economists to model changes in variance in time series data by examining the mean and variance of time series data simultaneously. His method models variance as a function of the squared residual errors from an autoregressive moving average process. According to @Bollerslev1986, “The ARCH process explicitly recognizes the difference between the unconditional and the conditional variance allowing the latter to change over time as a function of past errors.” The Generalized Autoregressive Conditional Heteroskedasticity (GARCH) model builds upon the model of @Engle1982 and incorporates an autoregressive component with a moving average component. @Bollerslev1986 extend the work of @Engle1982 by describing the conditional variance with an autoregressive moving average (ARMA) process. @Bollerslev1986 presents a model that captures conditional changes in variance over time as well as changes in the time-dependent variance and exogenous shocks to variances. 
+
+ARCH and GARCH models are largely implemented by those examining volatility contagions. @French1986 concludes that four to twelve percent of the daily variance is caused by mispricing, and he finds that if the pricing errors are generated only when exchanges are open, the errors have a trivial effect on the differences between trading and non-trading variances. In turn, the difference is attributed to differences in the flow of information during trading and non-trading hours. The work of @Lamoureux1990 suggests that conditional heteroscedasticity may be caused by a time dependence in the rate of information arrival to the market. Unlike @Lamoureux1990, @Mizrach1990 associates ARCH models with the errors of learning processes of economic agents and concludes that errors in expectations are linked with past errors in the same expectations. 
+
+@Lin2004 implement a GARCH(1,1) model to test stock returns in Asian banking industries for volatility clustering. They compare the industry contagion effect in the banking industry before, during, and after the Asian financial crisis. @Bae2003 characterize the extent of contagion, its significance, and its determinants with a multinomial logistic regression model and conclude that contagion is not only predictable but dependent on regional interest rates, exchange rates, and conditional stock return volatility. Furthermore, they find that contagion is stronger for negative returns rather than mixed or positive returns. @King1990 examines contagions within financial markets by testing for higher correlations between markets during crises, and they conclude that investors infer information from price changes in other markets, and a “mistake” in one market may be transmitted to others.
+
+#Background Information
+
+To measure how new knowledge in the technology industry spreads, we examine disclosure of classified government documents made by Edward Snowden. In June of 2013, *The Guardian* and *The Washington Post* publicized the existence of PRISM: a government surveillance program sponsored by the National Security Agency (NSA). This program facilitated the extraction of internet users’ search histories, emails, file transfers, videos, photos, and live chats from companies including Microsoft, Yahoo, Google, Facebook, PalTalk, AOL, Skype, YouTube, and Apple. Moreover, the program enabled the in-depth surveillance of live communications and stored data without the use of warrants. Historically, internet companies were legally mandated to comply with data requests made by government officials. However, PRISM circumvented the court-ordered process. In turn, government officials gained direct access to the servers of internet companies. Several companies contacted by *The Guardian* and *The Post* claimed they were unaware of the program, did not grant the U.S. government access to their servers, and responded only to targeted requests for information [@Greenwald2013]. 
+
+Edward Snowden, the source of the leak, spoke from Hong Kong and publicly addressed his intent. He affirmed that the extent to which the NSA collected internet communications data from U.S. internet companies exceeded public knowledge. Subsequent to his announcement, Chinese protesters marched on the U.S. consulate and demanded that local officials protect Snowden. Polar views concerning the actions taken by Snowden emerged shortly after he leaked classified information. Although many praised Snowden for exposing the injustice carried out by the government and the criminal infringement of personal privacy, the Speaker of the U.S. House of Representatives, John Boehner, denounced Snowden as a traitor, and FBI Director Robert Mueller claimed Mr. Snowden caused “significant harm” [@BBCSnowden]. Thereafter, the U.S. government pursued a criminal investigation against Snowden, and U.S. prosecutors charged him with espionage and theft [@SnowdenTimeline2013].
+
+The actions of Snowden exemplify a practice called *whistleblowing*: the act of exposing activities of a group that are unethical, illegal, or against the interest of the public [@Vandekerckhove2006]. We implement an event study methodology to examine the lasting effects of whistleblowing on the financial returns of firms implicated in the allegations. This case is particularly interesting due to the NSA’s role as a perpetrator of personal privacy. Although many laws exist to protect whistleblowers, whistleblowing in a government organization is likely to result in criminal charges. 
+
+The public displayed a mercurial sentiment surrounding the disclosure of NSA documents and Snowden was portrayed as both a scandalous traitor who endangered national security and a hero who protected individual rights concerning personal privacy. To understand the effects of the dissemination of new information, we perform event studies around dates we believe had the largest influence on public sentiment. We examine the abnormal returns surrounding the initial disclosure of the leaks on June 5th, protests on behalf of the protection of Snowden in Hong Kong on June 15th, and criminal complaints filed against Snowden on June 22nd. 
+
+Fig. (1) displays the closing prices of the stocks inncluded in our study during this period that have been standardized to the price on June 3rd for comparison. We find that stock prices for the companies involved in the allegations moved according to the public's sentiment regarding the ongoing affairs. During the initial leak period, the volatility of the stocks increased, but there was no siginficant imapct on returns. In contrast, during the period in which Chinese protestors demanded Snowden's protection, the aforementioned stocks experienced a negative shock to returns. This downturn can be seen near the end of the protest period in Fig (1). However, subsequent to the filing of criminal charges against Snowden, the returns of these companies returned to their previous levels, and no long term results were observed. An analysis of these events based strictly on the abnormal returns would implicitly assume that the variances of stocks during the event windows are constant. Provided that it is highly improbable that these variances remain constant, we examine changes in volatilities and volatility  contagions between companies that are identified as internet sites and companies identified as internet providers with a multivariate GARCH model. 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+## Plot of stock prices during event period
+event.price.data <- full.price.data %>%
+  mutate(Date = as.Date(row.names(full.price.data))) %>%
+  filter(Date > "2013-05-31")
+
+Event.plot.dat <- event.price.data %>%
+  ## Standardize prices so that they can be on same graph
+  mutate( SP500= SP500/SP500[1], Comcast = Comcast/Comcast[1], Charter = Charter/Charter[1], ATT = ATT/ATT[1], Verizon = Verizon/Verizon[1], Century = Century/Century[1], Google = Google/Google[1], Microsoft = Microsoft/Microsoft[1], Apple = Apple/Apple[1], Facebook = Facebook/Facebook[1], Yahoo = Yahoo/Yahoo[1], AOL = AOL/AOL[1]) %>%
+  gather(key = "Company", value = "Price", SP500, Comcast, Charter, ATT, Verizon, Century, Google, Microsoft, Apple, Facebook, Yahoo, AOL)
+
+###  Reorder legend to please the Chez
+       ## Create a list of companies ordered by the price on the last day of data
+Chez.mat <- Event.plot.dat %>%
+  filter(Date == Date[length(Date)]) %>%
+  arrange(desc(Price))
+level.order <- Chez.mat$Company
+       ## Reorder the Factor variable by these levels
+Event.plot.dat <- Event.plot.dat %>%
+  mutate(Company = factor(Company, levels = level.order))
+
+ggplot(Event.plot.dat, aes(x = Date)) + 
+  geom_line(aes(y = Price, color = Company)) +
+  theme_minimal() + 
+  ggtitle("Fig. 1: Returns of Companies During the Event Period") +
+  
+  geom_vline(xintercept = Leak.Date) +
+  annotate("text", x = Leak.Date + 3, y = 1.1, label = "Leaks Begin", size = 3.75) +
+  
+  geom_vline(xintercept = Protest.Date) + 
+  annotate("text", x = Protest.Date + 2, y = 1.1, label = "Protest", size = 3.75) + 
+  
+  geom_vline(xintercept = Complaint.Date) +
+  annotate("text", x = Complaint.Date + 2.5, y = 1.1, label = "Complaint", size = 3.75)
+
+```
+
+
+#Data Description 
+
+```{r, include = FALSE}
+##  Create dataframe of returns
+
+log.Data <- apply(full.price.data, 2, log)
+Returns <- apply(log.Data, 2, diff)
+Returns <- as.data.frame(Returns)
+
+Dates <- as.Date(row.names.data.frame(Returns)) 
+
+Returns.xts <- as.xts(Returns)
+Returns.df <- as.data.frame(Returns)
+
+rm(log.Data)
+```
+
+```{r include=FALSE, message=FALSE, warning=FALSE}
+###   CREATE INDEXES OF SITE AND PROVIDER RETURNS
+
+############################
+###  Equally weighted:
+
+    ## Long version is useful for plots
+Index.Returns.long <- Returns.df %>%
+  select(-SP500) %>%
+  mutate(Date = Dates) %>%
+  gather(key = "stock", value = "return", sites, providers) %>%
+  mutate(Group = as.factor(ifelse(stock %in% sites, "Named", "Provider"))) %>%
+  group_by(Group, Date)  %>%
+  summarise(Avg.return = mean(return))
+    
+    ## Standard version
+Index.Returns <- Index.Returns.long %>%
+  spread(key = Group, value = Avg.return)
+  
+####################################
+###  Weighted by market cap
+###  performed in Supplementary_code/weighted_index.R
+
+   ## Supp code makes standard version
+source("../Supplementary_code/weighted_index.R")
+
+w.Index.Returns.long <- w.Index.Returns %>%
+  gather(key = "Group", value = "Avg.return", Named, Provider) 
+
+```
+
+The price data we use was gathered using an application programming interface (API) from Yahoo Finance, a leading financial portal that provides current and historical quotes for stocks, bonds, and mutual funds. In accordance with standard event study methodologies, we determine the normal responses of stocks to daily events in the absence of exogenous shocks and include particular event days in our model as indicator variables. The continuous window in this study contains the daily closing stock prices between May 21, 2012, and June 28, 2013 of internet sites and internet providers. We include daily closing prices for the S&P 500, Nasdaq Tech 100, Comcast, Charter, Century, AT&T, Verizon, Google, Microsoft, Apple, Facebook, Yahoo, and AOL, and we exclude major holidays as well as weekends. 
+
+Throughout this study, we calculate returns at time $t$ as: $$R_{it} = ln(\frac{P_t}{P_{t-1}})$$ with \(P_t\) equal to the price of the stock on day \(t\). Thereafter, we create four indexes comprised of returns: two that include the returns of internet sites and two that include the returns of internet providers. The indexes containing internet providers include the following companies: Comcast, Charter, AT&T, Verizon, and Century, while the indexes comprised of internet sites contain: Google, Microsoft, Facebook, AOL, and Yahoo.
+
+We group the aforementioned indexes by two methods of weighting. The first group consists of indexes that are weighted by the simple mean. The second group contains indexes that are weighted by market capitalization. We compute the market cap of each firm at time $t$ by multiplying the number of Class A shares outstanding by the closing price of a single Class A share at time $t$. The number of Class A shares outstanding for companies included in the indexes was gathered from quarterly 10-K filings with the U.S. Securities and Exchange Commission immediately preceeding to the event window.
+
+#Event Study 
+
+To interpret the price effects of news announcements, we place emphasis on the financial data from the day of the events and the days immediately following the events. The trading days on which the public sentiment concerning Snowden was most likely to change include the day that classified information was leaked to the public, individuals protested in Hong Kong at the consulate, and U.S. officials filed of criminal complaints against Snowden. We account for the trading days immediately prior to these events and three trading days immediately following these events with indicator variables. The Dummy Variable Method estimates the model as a single time period with indicator variables for each day of the event period. The regression assumes the following form: $$R_t = \alpha + \beta_1SP500 + \beta_2  \sum_{i = -1}^3 D_{i, w} + \epsilon$$
+
+The dummy variables included in this model are atypical because only one observation corresponds to each day. These variables capture the residual specific to each day, which is the abnormal return after controlling for the market return. When we regress stock returns on to the S&P 500, we observe that a percent increase in returns for the S&P 500 is correlated to an increase in returns of most internet sites and internet providers. With the exception of Facebook and Yahoo, the returns of internet companies exhibit a strong correlation to the S&P 500. Upon further examination, it is apparent that the influence of the Snowden affairs varied throughout the leak, protest, and complaint periods. 
+
+In contrast to our expectations, the revelations surrounding mass surveillance in the United States did not significantly impact the returns of internet sites implicated in the actions of the government. However, the majority of internet providers suffered statistically significant losses, regardless of their roles fairly tangential throughout the PRISM operation. With 95% confidence, we conclude that internet providers had statistically significant abnormal returns throughout the leak, protest, and complaint periods. In stark contrast, only three occurrences of significant losses were observed for internet sites throughout the event window. The majority of abnormal returns occurred at the threshold between the protest and complaint periods. The initiation of protests spurred a significant change in sentiment which resulted in the decrease of stock prices and returns. Snowden was perceived as a hero in need of protection, and the government and internet companies were blamed for violating personal privacy rights. However, the filing of a criminal complaint alleviated the pressure placed on government officials as well as associated internet companies. Public sentiment shifted, blame fell upon Snowden, and both internet sites and internet providers experienced a rebound in stock prices and returns. 
+
+```{r include = FALSE} 
+### Create date dummies
+### using Jenna's original dates
+
+DV.returns <- Returns %>%
+  mutate(LM1 = ifelse(Dates == "2013-06-06", 1, 0),
+         LD  = ifelse(Dates == "2013-06-07", 1, 0),
+         LP1 = ifelse(Dates == "2013-06-10", 1, 0),
+         LP2 = ifelse(Dates == "2013-06-11", 1, 0),
+         LP3 = ifelse(Dates == "2013-06-12", 1, 0),
+         PM1 = ifelse(Dates == "2013-06-14", 1, 0),
+         #PD  = ifelse(Dates == "2013-06-06", 1, 0),
+         PP1 = ifelse(Dates == "2013-06-17", 1, 0),
+         PP2 = ifelse(Dates == "2013-06-18", 1, 0),
+         PP3 = ifelse(Dates == "2013-06-19", 1, 0),
+         CM1 = ifelse(Dates == "2013-06-21", 1, 0),
+         #CD  = ifelse(Dates == Complaint.Date, 1, 0),
+         CP1 = ifelse(Dates == "2013-06-24", 1, 0),
+         CP2 = ifelse(Dates == "2013-06-25", 1, 0),
+         CP3 = ifelse(Dates == "2013-06-26", 1, 0),
+         Leak.window = ifelse(Dates >= Leak.Date - 1 & Dates < Protest.Date - 1, 1, 0),
+         #Protest.window = ifelse(Dates >= Protest.Date - 1 & Dates < Complaint.Date - 1, 1, 0),
+         Protest.window = ifelse(Dates >= "2013-06-18" & Dates <= "2013-06-20", 1, 0),
+         Complaint.window = ifelse(Dates >= Complaint.Date - 1 & Dates < Complaint.Date + 3, 1, 0)
+         )
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, results = "asis"}
+## Parameter estimation: providers
+## Regressions of each stock on the index
+
+## Provider regs
+
+Comcast.Est.Reg <- lm(Comcast ~ SP500 + LM1 + LD + LP1 +LP2 + LP3 + PM1 + PP1 + PP2 + PP3 + CM1 + CP1 + CP2 + CP3, data = DV.returns)
+#summary(Comcast.Est.Reg)
+
+
+Charter.Est.Reg <- lm(Charter ~ SP500 + LM1 + LD + LP1 +LP2 + LP3 + PM1 + PP1 + PP2 + PP3 + CM1 + CP1 + CP2 + CP3, data = DV.returns)
+#summary(Charter.Est.Reg)
+
+Att.Est.Reg <- lm(ATT ~ SP500 + LM1 + LD + LP1 +LP2 + LP3 + PM1 + PP1 + PP2 + PP3 + CM1 + CP1 + CP2 + CP3, data = DV.returns)
+#summary(Att.Est.Reg)
+
+
+Verizon.Est.Reg <- lm(Verizon ~ SP500 + LM1 + LD + LP1 +LP2 + LP3 + PM1 + PP1 + PP2 + PP3 + CM1 + CP1 + CP2 + CP3, data = DV.returns)
+#summary(Verizon.Est.Reg)
+
+
+Century.Est.Reg <- lm(Century ~ SP500 + LM1 + LD + LP1 +LP2 + LP3 + PM1 + PP1 + PP2 + PP3 + CM1 + CP1 + CP2 + CP3, data = DV.returns)
+#summary(Century.Est.Reg)
+
+stargazer(Comcast.Est.Reg, Charter.Est.Reg, Att.Est.Reg, Verizon.Est.Reg, Century.Est.Reg, 
+          header = FALSE, keep.stat = c("n", "rsq"),
+          font.size = "small", 
+          title = "Internet service providers")
+
+rm(Comcast.Est.Reg, Charter.Est.Reg, Att.Est.Reg, Verizon.Est.Reg, Century.Est.Reg)
+######################################
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, results = "asis"}
+##  Site regs
+
+Google.Est.Reg <- lm(Google ~ SP500 + LM1 + LD + LP1 +LP2 + LP3 + PM1 + PP1 + PP2 + PP3 + CM1 + CP1 + CP2 + CP3, data = DV.returns)
+#summary(Google.Est.Reg)
+
+
+Microsoft.Est.Reg <- lm(Microsoft ~ SP500 + LM1 + LD + LP1 +LP2 + LP3 + PM1 + PP1 + PP2 + PP3 + CM1 + CP1 + CP2 + CP3, data = DV.returns)
+#summary(Microsoft.Est.Reg)
+
+
+Apple.Est.Reg <- lm(Apple ~ SP500 + LM1 + LD + LP1 +LP2 + LP3 + PM1 + PP1 + PP2 + PP3 + CM1 + CP1 + CP2 + CP3, data = DV.returns)
+#summary(Apple.Est.Reg)
+
+
+Facebook.Est.Reg <- lm(Facebook ~ SP500 + LM1 + LD + LP1 +LP2 + LP3 + PM1 + PP1 + PP2 + PP3 + CM1 + CP1 + CP2 + CP3, data = DV.returns)
+#summary(Facebook.Est.Reg)
+
+
+Yahoo.Est.Reg <- lm(Yahoo ~ SP500 + LM1 + LD + LP1 +LP2 + LP3 + PM1 + PP1 + PP2 + PP3 + CM1 + CP1 + CP2 + CP3, data = DV.returns)
+#summary(Yahoo.Est.Reg)
+
+
+AOL.Est.Reg <- lm(AOL ~ SP500 + LM1 + LD + LP1 +LP2 + LP3 + PM1 + PP1 + PP2 + PP3 + CM1 + CP1 + CP2 + CP3, data = DV.returns)
+#summary(AOL.Est.Reg)
+
+stargazer(Google.Est.Reg, Microsoft.Est.Reg, Apple.Est.Reg, Facebook.Est.Reg, Yahoo.Est.Reg, AOL.Est.Reg, 
+          header = FALSE, keep.stat = c("n", "rsq"),
+          font.size = "small",
+          title = "Named sites")
+
+rm(Google.Est.Reg, Microsoft.Est.Reg, Apple.Est.Reg, Facebook.Est.Reg, Yahoo.Est.Reg, AOL.Est.Reg)
+
+```
+
+# Multi-Variate Dynamic Conditional Correlation GARCH Model
+
+According to @Bollerslev1986, if an autoregressive moving average model (ARMA) model is assumed for the error variance, the model is defined as a GARCH model. @Bollerslev1986 declares the conditional variance a GARCH model with an order $(q, p)$ as: 
+
+$$\sigma_t^2 = (\omega + \sum_{j = 1}^m \zeta_j v_{jt} ) + \sum_{j = 1}^ q \alpha_j\epsilon_{t-j}^2 + \beta_j \sigma^2_{t - j}  $$
+with $\zeta$ as the intercept and $\epsilon_t^2$ as the residual from the mean process. 
+
+"Bad" news often has a more pronounced effect on volatility relative to "good" news, and for many stocks, there exists a strong negative correlation between the current return and the future volatility of the stock. @Glosten1993 permit the effects of good and bad news to have differing effects on volatility. In contrast to the Standard GARCH model, @Glosten1993 incorporate an indicator function in the GJR-GARCH model which enables the examination and differentiation of the effects of positive and negative shocks on variances. They model variance as: 
+
+$$\sigma^2_t = (\omega + \sum_{j =1}^m \zeta_j v_{jt}) + \sum_{j=1}^q \alpha_j \epsilon_{t-j}^2 + \gamma_j I_{t-j} + \sum_{j = 1}^p \beta_j \sigma^2_{t-j}$$
+The indicator variable assumes a value of one for $\epsilon \leq 0$ and zero when $\epsilon > 0$. 
+
+The following system of equations describes the stock returns $(R_i)$ and conditional stock return volatility $(h_i)$ behavior of the two groups. These equations account not only for the returns relative to the market, $M_t$ but also variances of the other group and a lagged time period. The index $i$ where $i = 1,2$ represents internet sites and internet providers respectively. The subscript $t$ denotes the time index, whereas the information set is defined as $\Omega'_{t-1}$ and $\epsilon_i$ represents the error terms. 
+
+  (1) $R_{1,t} = \alpha_1 + b_1M_t + \epsilon_{1, t}$
+  
+  (2) $R_{2,t} = \alpha_2 + b_2M_t + \epsilon_{2, t}$
+  
+  (3) $\epsilon_{j,t}/\Omega'_{t-1}$ ~ $N(0, h_{j,t})$
+  
+  (4) $h_{1,t} = v_1 + \alpha_1 h_{1, t-1} + \beta_1\epsilon^2_{1, t-1}$
+  
+  (5) $h_{2,t} = v_2 + \alpha_2 h_{2, t-1} + \beta_2\epsilon^2_{2, t-1}$
+  
+  (6) $h_{ij, t} = \rho_{ij}h_{i, t}h_{j,t}(-1 < \rho_{ij} < 1)$
+
+
+In a constant conditional correlation model, $\rho_{ij}$ is a scalar value. This implies that the conditional correlation between the groups is constant over time. More flexible formulations allow this correlation to vary for each time period. 
+ 
+To allow variations of correlation, Eq. (6) is written in matrix form as:
+
+$$H_t = D_t R D_t$$
+where $D_t$ is a diagonal matrix with elements $\sqrt{h_{11t}}, ..., \sqrt{h_{nnt}}$, and $R$ is a conditional correlation matrix. 
+
+The Dynamic Conditional Correlation (DCC) model, presented by @Engle2002, allows the conditional correlation to vary over time, so that: 
+$$H_t = D_t R_t D_t$$
+
+However, this method creates a set of $t$ parameters that must be estimated, one for each time period. Therefore, the dynamics of the correlation are modelled with a process defined by a limited set of parameters. The standard DCC structure defines the dynamic conditional correlation matrix as: 
+$$ R_t = diag(Q_t)^{-1/2} Q_t diag(Q_t)^{-1/2}$$
+where $Q_t$ is the conditional covariance matrix. The aforementioned matrix is parameterized as:
+$$Q_t = (1 - \alpha - \beta)\bar{Q} + \alpha z_{t-1} z'_{t-1} + \beta Q_{t-1}$$
+in which $\bar{Q}$ is the unconditional matrix of the standardized errors $z_t$ and serves to make the process covariance targeting toward the unconditional variance matrix. This formulation permits a flexible dynamic process that is solely parameterized by two parameters, $\alpha$ and $\beta$. The restriction imposed, $\alpha + \beta < 1$, ensures stationarity and positive definiteness which are required for the conditional covariance matrix $Q_t$. 
+
+# Model Specifications
+
+## Autoregressive Moving Average Specification
+
+To compute the extent to which a volatility contagion is present, we specify an autoregressive moving average (ARMA) model. An ARMA model describes stationary stochastic processes in terms of two polynomials and allows the mean of a series to be determined by previous values of the mean. Given a time series of data $X_t$, the autoregressive model of order $p$, $AR(p)$, is written as: $$X_t = c + \sum_{i = 1}^p \phi_i + \epsilon_t$$ with a constant, $c$, parameters, $\phi \in \{\phi_1, \phi_2, \phi_3, ... \phi_p\}$, and white noise, $\epsilon_t$. The moving average component of order $q$, $MA(q)$, models exogenous shocks to the mean. This component is written as: $$X_t = \mu + \epsilon_t + \sum_{i = 1}^q \theta_i \epsilon_{t-i}$$ with paramters, $\theta \in \{\theta_1, \theta_2, \theta_2, ... \theta_q\}$, the expectation of $X_t$, $\mu$, and white noise, $\epsilon$. 
+
+We determine the autoregressive moving average structure for each index by examining autocorrelation (ACF) and partial autocorrelation (PACF) functions. The results of these, included in Appendix 1, do not show significant evidence of persistence in the autocorellation and moving average processes. This is not surprising provided that we are using returns rather than prices. Therefore, we initially specify returns of both series as ARMA (0,0). The returns of each index are displayed below. 
+
+
+```{r, echo = FALSE}
+###  Time plot of returns for sites and providers
+###  EQUALLY WEIGHTED
+ggplot(Index.Returns.long, aes(x = Date)) + 
+  #geom_line(aes(y = Avg.return, linetype = Group)) + 
+  geom_line(aes(y = Avg.return, color = Group)) +
+  ggtitle("Returns of Indexes (Equal Weight)") + 
+  labs(y = "Average Return") + 
+  theme_minimal()
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+###  Time plot of returns for sites and providers
+###  WEIGHTED by MARKET CAP
+ggplot(w.Index.Returns.long, aes(x = Date)) + 
+  geom_line(aes(y = Avg.return, color = Group)) + 
+  ggtitle("Returns of Indexes (Weighted by Market Cap)") + 
+  labs(y = "Average Return") + 
+  theme_minimal()
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+##  Create xts objects for use with garch packages
+
+##  Equally weighted
+Index.Returns.xts <- as.data.frame(select(Index.Returns, -Date))
+row.names(Index.Returns.xts) <- Dates
+Index.Returns.xts <- as.xts(Index.Returns.xts)
+
+##  Market Cap weighted
+w.Index.Returns.xts <- as.data.frame(select(w.Index.Returns, -Date))
+row.names(w.Index.Returns.xts) <- Dates
+w.Index.Returns.xts <- as.xts(w.Index.Returns.xts)
+```
+
+We validate our choice of $p$ and $q$ by fitting our ARMA model with Ljung-Box tests. Ljung-Box tests assess the degree of autocorrelation of the residuals from a specified ARMA process. The hypotheses of the test are
+
+$H_0:$ The data are independently distributed. 
+
+$H_1:$ The data are not independently distributed (i.e the data exhibit serial correlation).
+
+The results of the Ljung-Box tests, shown in Table 3, indicate that, at the 95% level of significance, we fail to reject the null hypothesis. Hence, we specify the ARMA structure for both the internet provider index and the internet site index as $(0,0)$.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+## Ljung Box tests for both series
+
+
+# Equally weighted 
+
+EW.LBNamed1 <- Box.test(abs(Index.Returns.xts$Named), 1, type = "Ljung-Box")
+W.LBNamed1 <- Box.test(abs(w.Index.Returns.xts$Named), 1, type = "Ljung-Box")
+EW.LBNamed4 <- Box.test(abs(Index.Returns.xts$Named), 4, type = "Ljung-Box")
+W.LBNamed4 <- Box.test(abs(w.Index.Returns.xts$Named), 4, type = "Ljung-Box")
+
+EW.LBProvider1 <- Box.test(abs(Index.Returns.xts$Provider), 1, type = "Ljung-Box")
+W.LBProvider1 <- Box.test(abs(w.Index.Returns.xts$Provider), 1, type = "Ljung-Box")
+EW.LBProvider4 <- Box.test(abs(Index.Returns.xts$Provider), 4, type = "Ljung-Box")
+W.LBProvider4 <- Box.test(abs(w.Index.Returns.xts$Provider), 4, type = "Ljung-Box")
+
+Group <- c("Named", "Named", "Provider", "Provider")
+LBtable <- data.frame( df = 1, X.sqEW = EW.LBNamed1$statistic, pvalEW = EW.LBNamed1$p.value, X.sqW = W.LBNamed1$statistic, pvalW = W.LBNamed1$p.value)
+LBtable <- rbind(LBtable, c( 4, EW.LBNamed4$statistic, EW.LBNamed4$p.value, W.LBNamed4$statistic, W.LBNamed4$p.value))
+LBtable <- rbind(LBtable, c( 1, EW.LBProvider1$statistic, EW.LBProvider1$p.value, W.LBProvider1$statistic, W.LBProvider1$p.value))
+LBtable <- rbind(LBtable, c( 4, EW.LBProvider4$statistic, EW.LBProvider4$p.value, W.LBProvider4$statistic, W.LBProvider4$p.value))
+LBtable <- cbind(Group, LBtable)
+row.names(LBtable) <- NULL
+
+
+Rows <- c( "Group", "Degrees of Freedom", "X-Squared", "P-Value")
+
+
+Lb.kable <- kable(LBtable, digits = 3, booktabs = T, caption = "ARMA Model Ljung-Box Statistics",
+       col.names = c("Group", "DF", "X-sq", "P-Value", "X-sq", "P-value")) %>%
+       add_header_above(c("", "", "Equal Weighted" = 2, "Market Cap Weighted" = 2))
+kable_styling(Lb.kable, latex_options = "hold_position")
+       
+```
+
+##Univariate GARCH Specification
+
+The appropriate GARCH model is determined by comparing information criteria: estimators of the relative quality of statistic models. Infomation criteria estimate the amount of information lost by the model and confronts the trade-off between the goodness of fit of the model as well as the simplicity of the model. The most common criteria, the Akaike Information Criteria (AIC), are relative measures of model parsimony that are calculated as $AIC = 2k - 2ln(L)$ where $k$ denotes the number of parameters, and $L$ denotes the maximized value of the likelihood function. Therefore, a lower value indicates a more parsimonious model, relative to a model fit with a higher AIC, and the model with the lowest AIC is preferred. For robustness, we include three other information criteria: Bayes, Shibata, and Hannan-Quinn (HQ). The results are displayed in Table 4. 
+
+The GARCH models included in this study differ for the equally weighted and the market cap weighted series. However, within each series, all criteria are in agreement. For the equally weighted series, the criteria choose a GJR GARCH specification for internet providers and a simple GARCH specification for the named internet sites. For the market cap weighted series, the criteria choose a simple specification for the providers and a GJR specification for named sites. We impose these specifications on the GARCH models and conduct robustness tests by including different specifications. The results do not substantially change.
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+####   Compute Info Criteria to compare specifications
+
+
+###  Create info criteria functions
+model.compare <- function(y, gspec){
+  garchfit.funk <- ugarchfit(data = y, spec = gspec, solver = "nloptr")
+  infocriteria(garchfit.funk)
+}
+
+###  Simple GARCH spec
+
+garchspec.s <- ugarchspec(mean.model = list(armaOrder = c(0,0)),
+                        variance.model = list(model = "sGARCH"), distribution.model = "norm")
+
+
+###  GJR GARCH spec
+
+garchspec.gjr <- ugarchspec(mean.model = list(armaOrder = c(0,0)),
+                        variance.model = list(model = "gjrGARCH"), distribution.model = "norm")
+
+
+## Apply function to each series
+
+Comp.EWs <- as.data.frame(apply(Index.Returns.xts, 2, model.compare, garchspec.s))
+Comp.Ws <- as.data.frame(apply(w.Index.Returns.xts, 2, model.compare, garchspec.s))
+
+Comp.EWgjr <- as.data.frame(apply(Index.Returns.xts, 2, model.compare, gspec = garchspec.gjr))
+Comp.Wgjr <- as.data.frame(apply(w.Index.Returns.xts, 2, model.compare, gspec = garchspec.gjr))
+
+## Make a combined table for returns 
+Named.comp <- as.data.frame(cbind(Comp.EWs$Named, Comp.EWgjr$Named, Comp.Ws$Named, Comp.Wgjr$Named))
+
+Provider.comp <- cbind(Comp.EWs$Provider, Comp.EWgjr$Provider, Comp.Ws$Provider, Comp.Wgjr$Provider)
+
+Comp.dat <- as.data.frame(rbind(Named.comp, Provider.comp))
+test.name <- c("Aikake", "Bayes", "Shibata", "HQ", "Aikake", "Bayes", "Shibata", "HQ")
+Comp.dat <- cbind(test.name, Comp.dat)
+
+## Pretty kable table!
+AICKable <- kable(Comp.dat, digits = 3, booktabs = T, 
+      col.names = c("Criterion", "Simple", "GJR", "Simple", "GJR"), 
+      caption = "Information Criteria for GARCH Specifications") %>%
+      add_header_above(c("", "Equal Weighted" = 2, "Market Cap Weighted" = 2)) %>%
+      group_rows("Named", 1, 4) %>%
+      group_rows("Provider", 5, 8)
+kable_styling(AICKable, latex_options = "hold_position")
+```
+
+\pagebreak 
+
+## Multi-Variate Dynamic Conditional Correlation Specification
+
+A complete specification of the multivariate DCC model requires the specification of the joint distribution of the error terms of the combined series in addition to a mean model and variance model for each series. We specify a multivariate normal distribution for the joint error terms and test for robustness using a multivariate t-distribution.
+
+# Dynamic Conditional Correlation GARCH Results
+
+Event studies adequately identify immediate losses due to specified events, but they fail to capture spillover effects because they assume that volatility is constant. The implementation of a dynamic conditional correlation GARCH model allows us to study how the increase in transparency of internet sites’ actions influenced the volatilities of internet providers’ stocks. Throughout the entirety of June, 2013, the correlation between the volatilities of internet sites and internet providers increased by more than one hundred percent. 
+
+Immediately after *The Guardian* and *The Washington Post* reported government surveillance efforts, the correlation of the volatility of internet sites and providers steadily increased. Shortly after the protest in Hong Kong and swing in public sentiment, the correlation between both indexes briefly fell. Thereafter, the correlation continued its upward trend at a faster rate until the criminalization of Snowden's actions. Subsequently, the correlation between the volatility of internet companies' stocks fell. 
+
+The period of heightened correlation between the indexes appears to be ephemeral. However, the sizable increase in the correlation of volatilities demonstrates that as individuals obtained new information and public sentiment changed. This implies that new information not only affects companies involved in headlining news stories but also associated companies.
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+###  DCC CODE
+
+##  Need an xts object for the SP500 if we are going to include it
+
+SP.xts <- as.xts(select(Returns,SP500))
+
+##  First, specify a univariate model for each series
+
+## For the equally weighted indexes
+## Information criteria suggest GJR for Named and Simple for Providers
+uspec.Named.EW <- ugarchspec(mean.model = list(armaOrder = c(0,0)
+                                            )#,external.regressors = SP.xts),
+                 ,variance.model = list(model = "sGARCH"), 
+                 distribution.model = "norm")
+
+uspec.Provider.EW <- ugarchspec(mean.model = list(armaOrder = c(0,0)
+                                                )#,external.regressors = SP.xts),
+                 ,variance.model = list(model = "gjrGARCH"), 
+                 distribution.model = "norm")                 
+
+mspec.EW <- multispec(c(uspec.Named.EW, uspec.Provider.EW))
+
+## For the market cap weighted indexes
+## Information criteria suggest simple for Named and GJR for Providers
+uspec.Named.W <- ugarchspec(mean.model = list(armaOrder = c(0,0)
+                                            )#,external.regressors = SP.xts),
+                 ,variance.model = list(model = "gjrGARCH"), 
+                 distribution.model = "norm")
+
+uspec.Provider.W <- ugarchspec(mean.model = list(armaOrder = c(0,0)
+                                                )#,external.regressors = SP.xts),
+                 ,variance.model = list(model = "sGARCH"), 
+                 distribution.model = "norm")                 
+
+mspec.W <- multispec(c(uspec.Named.W, uspec.Provider.W))
+
+##  DCC Multivariate specification
+DCCspec.EW <- dccspec(uspec = mspec.EW, dccOrder = c(1,1), distribution = "mvnorm")
+DCCspec.W <- dccspec(uspec = mspec.W, dccOrder = c(1,1), distribution = "mvnorm")
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+##  DCC ESTIMATION: EQUALLY WEIGHTED
+
+##  Estimating these univariate models first is more robust
+##  than just estimating the whole multivariate model as a whole
+multf <- multifit(mspec.EW, data = Index.Returns.xts)
+
+
+
+##  Multivariate estimation
+EqWfit <- dccfit(DCCspec.EW, data = Index.Returns.xts, 
+                    fit.control = list(eval.se = TRUE), fit = multf)
+
+# fit.Named <- dccfit(spec.Named, data = Returns.xts, 
+#                     fit.control = list(eval.se = TRUE), fit = multf)
+# fit.Provider <- dccfit(spec.Provider, data = Returns.xts, 
+#                     fit.control = list(eval.se = TRUE), fit = multf)
+
+##  Get the model-based time varying covariance and correlation matrices
+EqWcov <- rcov(EqWfit)
+EqWcor <- rcor(EqWfit)
+
+## these can be plotted as time series to see how the correlation changes over time
+#par(mfrow = c(2,1)) #creates a frame with 3 rows to be filled with plots
+EqWevent.cors <- as.xts(EqWcor[1,2,])
+EqWevent.cors <- EqWevent.cors["2013-05-31/"]  
+
+plot(EqWevent.cors, main = "DCC Results (Equally Weighted)")
+#abline(h = .4, col = "red", lwd = 3)
+
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+## Plot of DCC conditional correlations
+
+
+# EWcor.plot <- data.frame(Correlation = as.data.frame(EqWevent.cors)[,1], Date = filter(data.frame(Date = Dates), Date >= "2013-05-31"))
+# #EWcor.plot <- filter(EW.cor.plot, Date > "2013-05-31")
+# 
+# 
+# ggplot(EWcor.plot, aes(x = Date, y = Correlation)) + 
+#   geom_line() +
+#   #scale_x_date(date_breaks = "3 days") +
+#   geom_vline(xintercept = Leak.Date) +
+#   annotate("text", x = Leak.Date, y = .525, label = "Leaks Begin", size = 3.75) +
+#   
+#   geom_vline(xintercept = Protest.Date) + 
+#   annotate("text", x = Protest.Date, y = .525, label = "Protest", size = 3.75) + 
+#   
+#   geom_vline(xintercept = Complaint.Date) +
+#   annotate("text", x = Complaint.Date, y = .525, label = "Criminal Complaint Filed", size = 3.75) + 
+#   
+#   ggtitle("Correlation in volatility between sites and providers") + 
+#   theme_bw()
+
+```
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+##  DCC ESTIMATION: MARKET CAP WEIGHTED
+
+##  Estimating these univariate models first is more robust
+##  than just estimating the whole multivariate model as a whole
+multf <- multifit(mspec.W, data = w.Index.Returns.xts)
+
+
+
+##  Multivariate estimation
+MCWfit <- dccfit(DCCspec.W, data = w.Index.Returns.xts, 
+                    fit.control = list(eval.se = TRUE), fit = multf)
+
+# fit.Named <- dccfit(spec.Named, data = Returns.xts, 
+#                     fit.control = list(eval.se = TRUE), fit = multf)
+# fit.Provider <- dccfit(spec.Provider, data = Returns.xts, 
+#                     fit.control = list(eval.se = TRUE), fit = multf)
+
+##  Get the model-based time varying covariance and correlation matrices
+MCWcov <- rcov(MCWfit)
+MCWcor <- rcor(MCWfit)
+
+## these can be plotted as time series to see how the correlation changes over time
+#par(mfrow = c(2,1)) #creates a frame with 3 rows to be filled with plots
+MCWevent.cors <- as.xts(MCWcor[1,2,])
+MCWevent.cors <- MCWevent.cors["2013-05-31/"]  
+
+plot(MCWevent.cors, main = "DCC Results (Market Cap Weighted)")
+#abline(h = .4, col = "red", lwd = 3)
+
+```
+
+
+
+
+# Discussion and Conclusion 
+
+Prior to the implementation of the NSA program, PRISM, internet companies were legally mandated to comply with data requests made by the government. However, PRISM bypassed the court-ordered process and granted government officials direct access to internet companies’ servers. The immediate effects of the capricious public sentiment surrounding the disclosure of NSA documents and the effects of the dissemination of new information are captured by the event study methodology we employed. When the initial leaks occurred, people were uncertain of the consequences following the disclosure of government surveillance programs. 
+
+We observe abnormal returns at the threshold between the protest period and the complaint period. Although internet providers did not permit government access to internet servers, the majority of the public associated them with the violation of privacy and placed little blame on internet sites. Public sentiment became substantially polarized following the news leaks. Protests in Hong Kong initiated a period in which Snowden was perceived as a patriot, while internet providers and the United States government were deemed at fault for infringing upon individual rights. In turn, there were no abnormal returns for internet sites yet significant abnormal returns for internet providers. In contrast, when the criminal complaint was filed, sentiment changed yet again as Snowden was charged with espionage and theft, and pressure on the government and internet providers was alleviated. We conclude that stock returns for the companies involved in the allegations moved according to the public's sentiment regarding the ongoing affairs. Our findings exemplify the significant effect of changes in public sentiment as a response to the transmission of knowledge.
+
+The companies examined in this study suffered statistically significant abnormal returns subsequent to the release of information concerning their actions and an increase in the transparency of their behavior. The persistence of abnormal returns is minimal and exemplifies the Efficient Market Hypothesis, which states that asset prices and returns fully reflect all available information, and market prices only react to  new information. These results indicate that companies involved in headlining news stories will suffer statistically significant abnormal returns. Furthermore, these abnormalities may be attributed to the dispersion of new information and changes in sentiment. However, it is unlikely that future events similar to those included in our event studies would cause a precipitous and permanent decline in stock prices and returns. 
+
+Although event studies capture the immediate effects of specified events on the returns of companies, the utilization of event studies is limited due to the underlying assumption that volatilities of stocks remain constant throughout event periods. The DCC-GARCH model employed in this study elicits volatility spillover effects after the transmission of knowledge. The heightened correlation between volatilities provides evidence of a volatility contagion. Hence, the publication of new information concerning particular companies casts widespread effects on related firms. 
+
+$\pagebreak$
+
+References {#references .unnumbered}
+==========

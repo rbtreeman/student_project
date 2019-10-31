@@ -1,0 +1,286 @@
+---
+title: "The Transmission of Information in the Information Age"
+subtitle: "APPENDIX I"
+author: | 
+  | Jenna Christensen and Michael O'Hara, PhD
+
+output:
+  pdf_document: default
+  word_document: default
+
+
+fontsize: 11pt
+---
+
+# ARMA SPECIFICATION FOR MEAN MODELS
+
+Specification for the mean model consists of three steps:
+
+1. Initial examination of ACF and PACFs for the series
+
+2. Ljung-Box testing at different lags
+
+3. Diagnostic testing of assumed ARMA(0,0) structure
+
+We also look at each stock return series on its own to get a sense of where any irregularities might be. 
+
+
+```{r, message=FALSE, warning=FALSE, include = FALSE }
+rm(list = ls())
+library(pdfetch)
+library(tidyverse)
+#library(plyr)
+library(xts)
+library(readr)
+library(knitr)
+library(rmgarch)
+library(astsa)
+library(kableExtra)
+
+```
+
+```{r, message=FALSE, warning=FALSE, include=FALSE}
+##  Read in data from file
+##  Data is created in Supplementary_code/Fetch_data
+##  To import raw data directly (soup-to-nuts), run line below
+##  source("../Supplementary_Code/Fetch_data.R")
+
+full.price.data <- read.csv("../ImportableData/ImportData.csv", row.names = 1)
+
+Leak.Date <- as.Date("2013-06-05")
+Protest.Date <- as.Date("2013-06-15")
+Complaint.Date <- as.Date("2013-06-22")
+
+event.period <- paste(Leak.Date, "/", Complaint.Date + 4, sep = "")
+
+
+## Set index to be used in market model
+## as a string, eh?
+
+market.index <- "SP500"
+
+
+sites <- c("Google", "Microsoft", "Apple", "Facebook", "AOL", "Yahoo")
+providers <- c("Comcast", "Charter", "ATT", "Verizon", "Century")
+
+full.price.xts <- as.xts(full.price.data)
+
+sites.data <- select(full.price.data, sites)
+sites.xts <- as.xts(sites.data)
+providers.data <- select(full.price.data, providers)
+providers.xts <- as.xts(providers.data)
+```
+
+```{r, include = FALSE}
+##  Create dataframe of returns
+
+log.Data <- apply(full.price.data, 2, log)
+Returns <- apply(log.Data, 2, diff)
+Returns <- as.data.frame(Returns)
+
+Dates <- as.Date(row.names.data.frame(Returns)) 
+
+Returns.xts <- as.xts(Returns)
+Returns.df <- as.data.frame(Returns)
+
+rm(log.Data)
+```
+
+
+```{r include=FALSE, message=FALSE, warning=FALSE}
+###   CREATE INDEXES OF SITE AND PROVIDER RETURNS
+
+############################
+###  Equally weighted:
+
+    ## Long version is useful for plots
+Index.Returns.long <- Returns.df %>%
+  select(-SP500) %>%
+  mutate(Date = Dates) %>%
+  gather(key = "stock", value = "return", sites, providers) %>%
+  mutate(Group = as.factor(ifelse(stock %in% sites, "Named", "Provider"))) %>%
+  group_by(Group, Date)  %>%
+  summarise(Avg.return = mean(return))
+    
+    ## Standard version
+Index.Returns <- Index.Returns.long %>%
+  spread(key = Group, value = Avg.return)
+  
+####################################
+###  Weighted by market cap
+###  performed in Supplementary_code/weighted_index.R
+
+   ## Supp code makes standard version
+source("../Supplementary_code/weighted_index.R")
+
+w.Index.Returns.long <- w.Index.Returns %>%
+  gather(key = "Group", value = "Avg.return", Named, Provider) 
+
+###################################
+##  xts versions
+
+row.names(Index.Returns) <- Dates
+Index.Returns.xts <- as.xts(select(Index.Returns, -Date))
+
+row.names(w.Index.Returns) <- Dates
+w.Index.Returns.xts <- as.xts(select(w.Index.Returns, -Date))
+
+```
+## ACF/PACF ANALYSIS
+
+### Equally weighted indices
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+##  Specifying AR modelfor Equally weighted series
+#par(mfrow = c(2, 1))
+Named.acf <- acf2(abs(Index.Returns.xts$Named), max.lag = 4, main = "Named sites index")
+Provider.acf <- acf2(abs(Index.Returns.xts$Provider), max.lag = 4, main = "Providers index")
+```
+
+### Market cap weighted indices
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+##  Specifying AR modelfor market cap weighted series
+
+w.Named.acf <- acf2(abs(w.Index.Returns.xts$Named), max.lag = 4, main = "Named sites index")
+w.Provider.acf <- acf2(abs(w.Index.Returns.xts$Provider), max.lag = 4, main = "Providers index")
+```
+
+## LJUNG-BOX TESTS 
+
+One lag and four lags shown for each series with each weighting
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+## Ljung Box tests for both series
+
+
+# Equally weighted 
+
+EW.LBNamed1 <- Box.test(abs(Index.Returns.xts$Named), 1, type = "Ljung-Box")
+W.LBNamed1 <- Box.test(abs(w.Index.Returns.xts$Named), 1, type = "Ljung-Box")
+EW.LBNamed4 <- Box.test(abs(Index.Returns.xts$Named), 4, type = "Ljung-Box")
+W.LBNamed4 <- Box.test(abs(w.Index.Returns.xts$Named), 4, type = "Ljung-Box")
+
+EW.LBProvider1 <- Box.test(abs(Index.Returns.xts$Provider), 1, type = "Ljung-Box")
+W.LBProvider1 <- Box.test(abs(w.Index.Returns.xts$Provider), 1, type = "Ljung-Box")
+EW.LBProvider4 <- Box.test(abs(Index.Returns.xts$Provider), 4, type = "Ljung-Box")
+W.LBProvider4 <- Box.test(abs(w.Index.Returns.xts$Provider), 4, type = "Ljung-Box")
+
+Group <- c("Named", "Named", "Provider", "Provider")
+LBtable <- data.frame( df = 1, X.sqEW = EW.LBNamed1$statistic, pvalEW = EW.LBNamed1$p.value, X.sqW = W.LBNamed1$statistic, pvalW = W.LBNamed1$p.value)
+LBtable <- rbind(LBtable, c( 4, EW.LBNamed4$statistic, EW.LBNamed4$p.value, W.LBNamed4$statistic, W.LBNamed4$p.value))
+LBtable <- rbind(LBtable, c( 1, EW.LBProvider1$statistic, EW.LBProvider1$p.value, W.LBProvider1$statistic, W.LBProvider1$p.value))
+LBtable <- rbind(LBtable, c( 4, EW.LBProvider4$statistic, EW.LBProvider4$p.value, W.LBProvider4$statistic, W.LBProvider4$p.value))
+LBtable <- cbind(Group, LBtable)
+row.names(LBtable) <- NULL
+
+
+Rows <- c( "Group", "Degrees of Freedom", "X-Squared", "P-Value")
+
+
+Lb.kable <- kable(LBtable, digits = 3, booktabs = T, caption = "ARMA Model Ljung-Box Statistics",
+       col.names = c("Group", "DF", "X-sq", "P-Value", "X-sq", "P-value")) %>%
+       add_header_above(c("", "", "Equal Weighted" = 2, "Market Cap Weighted" = 2))
+kable_styling(Lb.kable, latex_options = "hold_position")
+       
+```
+
+All tests fail to reject the null hypothesis of no serial correlation in the residuals.
+
+General conclusion: (0,0) structure is appropriate for the ARMA part. We test this by running ARMA (0,0) on each series and examining the standardized residuals
+
+\pagebreak
+
+## ARMA (0,0) DIAGNOSTICS
+
+### Equally weighted series
+
+*Named sites*
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+##  Run ARMA (0,0) specification for the series and check diagnostics
+
+Named.ARMA <- sarima(Index.Returns.xts$Named, p = 0, d = 0, q = 0)
+```
+
+\pagebreak
+
+*Providers*
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+##  Run ARMA (0,0) specification for the series and check diagnostics
+
+Provider.ARMA <- sarima(Index.Returns.xts$Provider, p = 0, d = 0, q = 0)
+```
+
+\pagebreak
+
+### Market cap weighted series
+
+*Named sites* 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+##  Run ARMA (0,0) specification for the series and check diagnostics
+
+Named.ARMA <- sarima(w.Index.Returns.xts$Named, p = 0, d = 0, q = 0)
+```
+
+\pagebreak
+
+*Providers*
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+##  Run ARMA (0,0) specification for the series and check diagnostics
+
+Provider.ARMA <- sarima(w.Index.Returns.xts$Provider, p = 0, d = 0, q = 0)
+```
+
+\pagebreak
+
+## EXAMINING INDIVIDUAL STOCKS
+
+### Named sites
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+##  Specifying AR modelfor market cap weighted series
+
+Google.acf <- acf2(abs(Returns.xts$Google), max.lag = 4, main = "Google")
+
+Microsoft.acf <- acf2(abs(Returns.xts$Microsoft), max.lag = 4, main = "Microsoft")
+
+Apple.acf <- acf2(abs(Returns.xts$Apple), max.lag = 4, main = "Apple")
+
+Facebook.acf <- acf2(abs(Returns.xts$Facebook), max.lag = 4, main = "Facebook")
+
+AOL.acf <- acf2(abs(Returns.xts$AOL), max.lag = 4, main = "AOL")
+
+Yahoo.acf <- acf2(abs(Returns.xts$Yahoo), max.lag = 4, main = "Yahoo")
+
+
+```
+
+### Providers
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+##  Specifying AR modelfor market cap weighted series
+
+Comacast.acf <- acf2(abs(Returns.xts$Comcast), max.lag = 4, main = "Comcast")
+
+Charter.acf <- acf2(abs(Returns.xts$Charter), max.lag = 4, main = "Charter")
+
+ATT.acf <- acf2(abs(Returns.xts$ATT), max.lag = 4, main = "ATT")
+
+Verizon.acf <- acf2(abs(Returns.xts$Verizon), max.lag = 4, main = "Verizon")
+
+Century.acf <- acf2(abs(Returns.xts$Century), max.lag = 4, main = "Century")
+
+
+```
+
+
+Notes: A few of the named sites, such as Yahoo and AOL seem to have spikes at the first lag. This may be the reason for the p-value of .08 for the Ljung-Box of the market cap weighted series for sites. However, equal weighting eliminates this. We tested an ARMA(1,1) for this series and the main results do not change. Therefore, for parsimony, we keep to ARMA(0,0).
+
+Providers show nothing aside from a weird spike at 4 lags for Verizon. There is no good reason why in a daily returns model, four lags would be significant and it does not affect the index.
+
+
+

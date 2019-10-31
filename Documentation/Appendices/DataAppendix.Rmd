@@ -1,0 +1,421 @@
+---
+title: "The Transmission of Information in the Information Age"
+subtitle: "DATA APPENDIX"
+author: | 
+  | Jenna Christensen and Michael O'Hara, PhD
+  | Department of Economics
+  | St. Lawrence University
+  | 23 Romoda Drive 
+  | Canton, New York 13617
+output:
+  pdf_document: default
+  word_document: default
+
+
+fontsize: 11pt
+---
+
+
+```{r, message=FALSE, warning=FALSE, include=FALSE}
+####   Clear memory and load needed packages
+rm(list = ls())
+
+library(pdfetch)
+library(tidyverse)
+library(xts)
+library(reshape2)
+#library(plyr)
+library(knitr)
+library(readr)
+library(kableExtra)
+library(stargazer)
+library(rmgarch)
+
+knitr::opts_chunk$set(fig.width = 6, fig.height = 4)
+
+```
+
+
+```{r, message=FALSE, warning=FALSE, include=FALSE}
+##  Read in data from file
+##  Data is created in Supplementary_code/Fetch_data
+##  To import raw data directly (soup-to-nuts), run line below
+##  source("../Supplementary_Code/Fetch_data.R")
+
+full.price.data <- read.csv("../ImportableData/ImportData.csv", row.names = 1)
+
+Leak.Date <- as.Date("2013-06-05")
+Protest.Date <- as.Date("2013-06-15")
+Complaint.Date <- as.Date("2013-06-22")
+
+event.period <- paste(Leak.Date, "/", Complaint.Date + 4, sep = "")
+
+
+## Set index to be used in market model
+## as a string, eh?
+
+market.index <- "SP500"
+
+
+sites <- c("Google", "Microsoft", "Apple", "Facebook", "AOL", "Yahoo")
+providers <- c("Comcast", "Charter", "ATT", "Verizon", "Century")
+
+full.price.xts <- as.xts(full.price.data)
+
+sites.data <- select(full.price.data, sites)
+sites.xts <- as.xts(sites.data)
+providers.data <- select(full.price.data, providers)
+providers.xts <- as.xts(providers.data)
+```
+
+```{r, include = FALSE}
+##  Create dataframe of returns
+
+log.Data <- apply(full.price.data, 2, log)
+Returns <- apply(log.Data, 2, diff)
+Returns <- as.data.frame(Returns)
+
+Dates <- as.Date(row.names.data.frame(Returns)) 
+
+Returns.xts <- as.xts(Returns)
+Returns.df <- as.data.frame(Returns)
+
+rm(log.Data)
+```
+
+
+
+
+# Timing
+
+The time series of stock prices used in the paper runs from 5/18/2012 to 6/27/2013. Data was read from Yahoo Finance using the R package *pdfetch*. Code to do this import directly is contained in the file *Supplementary_Code/Fetch_data.R*, but the pre-imported data is called in the main source code for the paper. 
+
+Key dates in the Snowden event are:
+
+* Initial leak of story on data collection: `r Leak.Date`
+
+* Protests in Hong Kong: `r Protest.Date`
+
+* Criminal complaint filed: `r Complaint.Date`
+
+
+# Price series and returns
+
+Plots of both prices and daily returns are provided below for all series used in the study. Daily returns are generally expected to be mean zero if the returns series are to be considered stationary. This is tested more formally in specifying the ARMA structure of the mean, but summary statistics of the Returns series show no evidence for the contrary:
+
+```{r echo= FALSE, message=FALSE, warning=FALSE, results = "asis"}
+stargazer(Returns.df, header = FALSE, 
+          title = "Summary statistics of daily returns",
+          font.size = "small")
+```
+
+\pagebreak
+
+
+## S&P 500 Index
+
+This index was used as the market index for the study
+
+```{r include = FALSE}
+nr <- nrow(Returns.xts)
+shade <- cbind(upper = rep(1700, nr), lower = rep(1200, nr))
+shade <- xts(shade, index(Returns.xts))
+
+plot(full.price.xts$SP500, main = "S&P 500 Daily Prices")
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+##  Plot prices over whole period
+
+addPolygon(shade[event.period], col = "lightgrey", on = -1)
+```
+
+```{r include=FALSE, message=FALSE, warning=FALSE}
+##  Plot SP returns over whole period
+nr <- nrow(Returns.xts)
+shade <- cbind(upper = rep(.03, nr), lower = rep(-.03, nr))
+shade <- xts(shade, index(Returns.xts))
+plot(Returns.xts$SP500, main = "S&P500 Daily Returns")
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+addPolygon(shade[event.period], col = "lightgrey", on = -1)
+```
+
+\pagebreak
+
+## Named sites
+
+These are the sites named in Snowden's documents as having been providing information to the government through PRISM. 
+
+### Google
+
+```{r include=FALSE, message=FALSE, warning=FALSE}
+## Plot price series for sites
+shade <- cbind(upper = rep(460, nr), lower = rep(250, nr))
+shade <- xts(shade, index(Returns.xts))
+plot(sites.xts$Google, main = "Google Daily Prices")
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+addPolygon(shade[event.period], col = "lightgrey", on = -1)
+```
+
+```{r include=FALSE, message=FALSE, warning=FALSE}
+## Plot price series for sites
+shade <- cbind(upper = rep(.05, nr), lower = rep(-.08, nr))
+shade <- xts(shade, index(Returns.xts))
+plot(Returns.xts$Google, main = "Google Daily Returns")
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+addPolygon(shade[event.period], col = "lightgrey", on = -1)
+```
+
+### Microsoft
+
+```{r include=FALSE, message=FALSE, warning=FALSE}
+## Plot price series for sites
+shade <- cbind(upper = rep(40, nr), lower = rep(20, nr))
+shade <- xts(shade, index(Returns.xts))
+plot(sites.xts$Microsoft, main = "Microsoft Daily Prices")
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+addPolygon(shade[event.period], col = "lightgrey", on = -1)
+```
+
+```{r include=FALSE, message=FALSE, warning=FALSE}
+## Plot price series for sites
+shade <- cbind(upper = rep(.05, nr), lower = rep(-.08, nr))
+shade <- xts(shade, index(Returns.xts))
+plot(Returns.xts$Microsoft, main = "Microsoft Daily Returns")
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+addPolygon(shade[event.period], col = "lightgrey", on = -1)
+```
+
+
+### Apple
+
+```{r include=FALSE, message=FALSE, warning=FALSE}
+## Plot price series for sites
+shade <- cbind(upper = rep(100, nr), lower = rep(50, nr))
+shade <- xts(shade, index(Returns.xts))
+plot(sites.xts$Apple, main = "Apple Daily Prices")
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+addPolygon(shade[event.period], col = "lightgrey", on = -1)
+```
+
+```{r include=FALSE, message=FALSE, warning=FALSE}
+## Plot price series for sites
+shade <- cbind(upper = rep(.075, nr), lower = rep(-.15, nr))
+shade <- xts(shade, index(Returns.xts))
+plot(Returns.xts$Apple, main = "Apple Daily Returns")
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+addPolygon(shade[event.period], col = "lightgrey", on = -1)
+```
+
+### Facebook
+
+```{r include=FALSE, message=FALSE, warning=FALSE}
+## Plot price series for sites
+shade <- cbind(upper = rep(40, nr), lower = rep(15, nr))
+shade <- xts(shade, index(Returns.xts))
+plot(sites.xts$Facebook, main = "Facebook Daily Prices")
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+addPolygon(shade[event.period], col = "lightgrey", on = -1)
+```
+
+```{r include=FALSE, message=FALSE, warning=FALSE}
+## Plot price series for sites
+shade <- cbind(upper = rep(.20, nr), lower = rep(-.15, nr))
+shade <- xts(shade, index(Returns.xts))
+plot(Returns.xts$Facebook, main = "Facebook Daily Returns")
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+addPolygon(shade[event.period], col = "lightgrey", on = -1)
+```
+
+### AOL
+
+```{r include=FALSE, message=FALSE, warning=FALSE}
+## Plot price series for sites
+shade <- cbind(upper = rep(45, nr), lower = rep(20, nr))
+shade <- xts(shade, index(Returns.xts))
+plot(sites.xts$AOL, main = "AOL Daily Prices")
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+addPolygon(shade[event.period], col = "lightgrey", on = -1)
+```
+
+```{r include=FALSE, message=FALSE, warning=FALSE}
+## Plot price series for sites
+shade <- cbind(upper = rep(.2, nr), lower = rep(-.2, nr))
+shade <- xts(shade, index(Returns.xts))
+plot(Returns.xts$AOL, main = "AOL Daily Returns")
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+addPolygon(shade[event.period], col = "lightgrey", on = -1)
+```
+
+### Yahoo
+
+```{r include=FALSE, message=FALSE, warning=FALSE}
+## Plot price series for sites
+shade <- cbind(upper = rep(30, nr), lower = rep(14, nr))
+shade <- xts(shade, index(Returns.xts))
+plot(sites.xts$Yahoo, main = "Yahoo Daily Prices")
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+addPolygon(shade[event.period], col = "lightgrey", on = -1)
+```
+
+```{r include=FALSE, message=FALSE, warning=FALSE}
+## Plot price series for sites
+shade <- cbind(upper = rep(.1, nr), lower = rep(-.1, nr))
+shade <- xts(shade, index(Returns.xts))
+plot(Returns.xts$Yahoo, main = "Yahoo Daily Returns")
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+addPolygon(shade[event.period], col = "lightgrey", on = -1)
+```
+
+\pagebreak
+
+## Internet Service Providers (Providers)
+
+Companies not directly implicated in Snowden's revelations as being involved in government surveillance, but related in a way that investors could plausibly connect them. 
+
+### Comcast
+
+```{r include=FALSE, message=FALSE, warning=FALSE}
+## Plot price series for sites
+shade <- cbind(upper = rep(30, nr), lower = rep(14, nr))
+shade <- xts(shade, index(Returns.xts))
+plot(providers.xts$Comcast, main = "Comcast Daily Prices")
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+addPolygon(shade[event.period], col = "lightgrey", on = -1)
+```
+
+```{r include=FALSE, message=FALSE, warning=FALSE}
+## Plot price series for sites
+shade <- cbind(upper = rep(05, nr), lower = rep(-.05, nr))
+shade <- xts(shade, index(Returns.xts))
+plot(Returns.xts$Comcast, main = "Comcast Daily Returns")
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+addPolygon(shade[event.period], col = "lightgrey", on = -1)
+```
+
+### Charter
+
+```{r include=FALSE, message=FALSE, warning=FALSE}
+## Plot price series for sites
+shade <- cbind(upper = rep(130, nr), lower = rep(60, nr))
+shade <- xts(shade, index(Returns.xts))
+plot(providers.xts$Charter, main = "Charter Daily Prices")
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+addPolygon(shade[event.period], col = "lightgrey", on = -1)
+```
+
+```{r include=FALSE, message=FALSE, warning=FALSE}
+## Plot price series for sites
+shade <- cbind(upper = rep(.1, nr), lower = rep(-.1, nr))
+shade <- xts(shade, index(Returns.xts))
+plot(Returns.xts$Charter, main = "Charter Daily Returns")
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+addPolygon(shade[event.period], col = "lightgrey", on = -1)
+```
+
+### ATT
+
+```{r include=FALSE, message=FALSE, warning=FALSE}
+## Plot price series for sites
+shade <- cbind(upper = rep(40, nr), lower = rep(32, nr))
+shade <- xts(shade, index(Returns.xts))
+plot(providers.xts$ATT, main = "ATT Daily Prices")
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+addPolygon(shade[event.period], col = "lightgrey", on = -1)
+```
+
+```{r include=FALSE, message=FALSE, warning=FALSE}
+## Plot price series for sites
+shade <- cbind(upper = rep(.1, nr), lower = rep(-.1, nr))
+shade <- xts(shade, index(Returns.xts))
+plot(Returns.xts$ATT, main = "ATT Daily Returns")
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+addPolygon(shade[event.period], col = "lightgrey", on = -1)
+```
+
+
+### Verizon
+
+```{r include=FALSE, message=FALSE, warning=FALSE}
+## Plot price series for sites
+shade <- cbind(upper = rep(60, nr), lower = rep(40, nr))
+shade <- xts(shade, index(Returns.xts))
+plot(providers.xts$Verizon, main = "Verizon Daily Prices")
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+addPolygon(shade[event.period], col = "lightgrey", on = -1)
+```
+
+```{r include=FALSE, message=FALSE, warning=FALSE}
+## Plot price series for sites
+shade <- cbind(upper = rep(.05, nr), lower = rep(-.05, nr))
+shade <- xts(shade, index(Returns.xts))
+plot(Returns.xts$Verizon, main = "Verizon Daily Returns")
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+addPolygon(shade[event.period], col = "lightgrey", on = -1)
+```
+
+### Century
+
+```{r include=FALSE, message=FALSE, warning=FALSE}
+## Plot price series for sites
+shade <- cbind(upper = rep(50, nr), lower = rep(30, nr))
+shade <- xts(shade, index(Returns.xts))
+plot(providers.xts$Century, main = "Century Daily Prices")
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+addPolygon(shade[event.period], col = "lightgrey", on = -1)
+```
+
+```{r include=FALSE, message=FALSE, warning=FALSE}
+## Plot price series for sites
+shade <- cbind(upper = rep(.1, nr), lower = rep(-.3, nr))
+shade <- xts(shade, index(Returns.xts))
+plot(Returns.xts$Century, main = "Century Daily Returns")
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+addPolygon(shade[event.period], col = "lightgrey", on = -1)
+```
